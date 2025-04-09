@@ -1,0 +1,25 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Workout Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <h2>My Workouts</h2>
+    <button onclick="logout()">Logout</button>
+
+    <div>
+        <input id="type" placeholder="Exercise Type" />
+        <input id="duration" type="number" placeholder="Minutes" />
+        <input id="calories" type="number" placeholder="Calories Burned" />
+        <input id="rate" type="number" placeholder="Heart Rate" />
+        <input id="workout-id" type="hidden" />
+        <button onclick="addWorkout()">Add Workout</button>
+    </div>
+
+    <ul id="workout-list"></ul>
+
+    <script src="app.js"></script>
+</body>
+</html>
