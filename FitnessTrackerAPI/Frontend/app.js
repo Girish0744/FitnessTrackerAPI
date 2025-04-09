@@ -2,7 +2,6 @@
 let token = localStorage.getItem("token");
 let editingWorkoutId = null;
 
-
 // ==== AUTH ====
 
 async function register() {
@@ -35,7 +34,9 @@ async function login() {
         localStorage.setItem("token", data.token);
         window.location.href = "dashboard.html";
     } else {
-        alert("Login failed");
+        const msg = document.getElementById("message");
+        msg.innerText = "User not found. Please register first.";
+        document.getElementById("register-form").style.display = "block";
     }
 }
 
@@ -81,7 +82,7 @@ async function addWorkout() {
     });
 
     if (res.ok) {
-        resetForm(); // ⬅️ clears form & resets mode
+        resetForm();
         loadWorkouts();
         loadWorkoutSummary();
     } else {
@@ -90,30 +91,27 @@ async function addWorkout() {
     }
 }
 
+function editWorkout(id) {
+    const workout = document.workoutData.find(w => w.id === id);
+    if (!workout) return;
 
-function editWorkout(workout) {
-    document.getElementById("workout-id").value = workout.id;
     document.getElementById("type").value = workout.exerciseType;
     document.getElementById("duration").value = workout.durationMinutes;
     document.getElementById("calories").value = workout.caloriesBurned;
     document.getElementById("rate").value = workout.heartRate;
 
-    const btn = document.querySelector("button[onclick='addWorkout()']");
-    btn.textContent = "Update Workout";
+    editingWorkoutId = id;
+    document.getElementById("action-btn").innerText = "Update Workout";
 }
 
 function resetForm() {
-    document.getElementById("workout-id").value = "";
     document.getElementById("type").value = "";
     document.getElementById("duration").value = "";
     document.getElementById("calories").value = "";
     document.getElementById("rate").value = "";
-
-    const btn = document.querySelector("button[onclick='addWorkout()']");
-    btn.textContent = "Add Workout";
+    editingWorkoutId = null;
+    document.getElementById("action-btn").innerText = "Add Workout";
 }
-
-
 
 async function loadWorkouts() {
     const res = await fetch(`${apiBaseUrl}/Workout/user`, {
@@ -129,22 +127,20 @@ async function loadWorkouts() {
     }
 
     const workouts = await res.json();
-    document.workoutData = workouts; // 🆕 store all workouts
+    document.workoutData = workouts;
     const list = document.getElementById("workout-list");
     list.innerHTML = "";
 
     workouts.forEach(w => {
         const li = document.createElement("li");
         li.innerHTML = `
-        <b>${w.exerciseType}</b> - ${w.durationMinutes} min, ${w.caloriesBurned} cal, HR: ${w.heartRate}
-        <button onclick="deleteWorkout(${w.id})">🗑</button>
-        <button onclick="editWorkout(${w.id})">✏️</button>
-          `;
+            <b>${w.exerciseType}</b> - ${w.durationMinutes} min, ${w.caloriesBurned} cal, HR: ${w.heartRate}
+            <button onclick="deleteWorkout(${w.id})">🗑</button>
+            <button onclick="editWorkout(${w.id})">✏️</button>
+        `;
         list.appendChild(li);
     });
-
 }
-
 
 async function deleteWorkout(id) {
     if (!confirm("Are you sure you want to delete this workout?")) return;
@@ -174,33 +170,9 @@ async function loadWorkoutSummary() {
     document.getElementById("summary").innerText = `Total Workouts Logged: ${data.total}`;
 }
 
-function resetForm() {
-    document.getElementById("type").value = "";
-    document.getElementById("duration").value = "";
-    document.getElementById("calories").value = "";
-    document.getElementById("rate").value = "";
-    editingWorkoutId = null;
-    document.querySelector("button").innerText = "Add Workout";
-}
-
-function editWorkout(id) {
-    const workout = document.workoutData.find(w => w.id === id);
-    if (!workout) return;
-
-    document.getElementById("type").value = workout.exerciseType;
-    document.getElementById("duration").value = workout.durationMinutes;
-    document.getElementById("calories").value = workout.caloriesBurned;
-    document.getElementById("rate").value = workout.heartRate;
-
-    editingWorkoutId = id;
-    document.querySelector("button").innerText = "Update Workout";
-}
-
-
 // ==== AUTOLOAD ON DASHBOARD ====
 if (window.location.pathname.includes("dashboard.html")) {
     if (!token) window.location.href = "index.html";
     loadWorkouts();
     loadWorkoutSummary();
 }
-

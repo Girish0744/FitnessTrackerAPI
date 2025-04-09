@@ -1,27 +1,27 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8" />
     <title>Workout Dashboard</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>My Workouts</h2>
-    <button onclick="logout()">Logout</button>
+    <div class="container">
+        <h2>My Workouts</h2>
 
-    <div>
-        <input id="type" placeholder="Exercise Type" />
-        <input id="duration" type="number" placeholder="Minutes" />
-        <input id="calories" type="number" placeholder="Calories Burned" />
-        <input id="rate" type="number" placeholder="Heart Rate" />
-        <input id="workout-id" type="hidden" />
-        <button onclick="addWorkout()">Add Workout</button>
+        <button id="logout-btn" onclick="logout()">Logout</button>
+
+        <form onsubmit="event.preventDefault(); addWorkout();" class="form">
+            <input type="text" id="type" placeholder="Exercise Type" />
+            <input type="number" id="duration" placeholder="Minutes" />
+            <input type="number" id="calories" placeholder="Calories Burned" />
+            <input type="number" id="rate" placeholder="Heart Rate" />
+            <button type="submit" id="action-btn">Add Workout</button>
+        </form>
+
+        <p id="summary"></p>
+
+        <ul id="workout-list"></ul>
     </div>
-
-    <p id="summary"><em>Loading workout summary...</em></p>
-
-
-    <ul id="workout-list"></ul>
 
     <script src="app.js"></script>
 </body>
