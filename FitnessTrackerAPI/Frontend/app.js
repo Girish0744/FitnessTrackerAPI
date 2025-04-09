@@ -1,5 +1,7 @@
 ﻿const apiBaseUrl = "https://localhost:7283/api";
 let token = localStorage.getItem("token");
+let editingWorkoutId = null;
+
 
 // ==== AUTH ====
 
@@ -45,13 +47,17 @@ function logout() {
 // ==== WORKOUTS ====
 
 async function addWorkout() {
-    const workoutId = document.getElementById("workout-id").value;
     const exerciseType = document.getElementById("type").value.trim();
     const durationMinutes = parseInt(document.getElementById("duration").value);
     const caloriesBurned = parseInt(document.getElementById("calories").value);
     const heartRate = parseInt(document.getElementById("rate").value);
 
-    const payload = {
+    if (!exerciseType || isNaN(durationMinutes) || isNaN(caloriesBurned) || isNaN(heartRate)) {
+        alert("All fields are required and must be valid numbers.");
+        return;
+    }
+
+    const workoutData = {
         exerciseType,
         durationMinutes,
         caloriesBurned,
@@ -59,30 +65,31 @@ async function addWorkout() {
         date: new Date().toISOString()
     };
 
-    const url = workoutId
-        ? `${apiBaseUrl}/Workout/${workoutId}`
+    const endpoint = editingWorkoutId
+        ? `${apiBaseUrl}/Workout/${editingWorkoutId}`
         : `${apiBaseUrl}/Workout`;
 
-    const method = workoutId ? "PUT" : "POST";
+    const method = editingWorkoutId ? "PUT" : "POST";
 
-    const res = await fetch(url, {
+    const res = await fetch(endpoint, {
         method,
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(workoutData)
     });
 
     if (res.ok) {
-        resetForm();
+        resetForm(); // ⬅️ clears form & resets mode
         loadWorkouts();
+        loadWorkoutSummary();
     } else {
-        const err = await res.text();
-        alert(`Failed to ${method === "PUT" ? "update" : "add"} workout: ` + err);
-        console.error(err);
+        const errorText = await res.text();
+        alert("Failed to submit workout: " + errorText);
     }
 }
+
 
 function editWorkout(workout) {
     document.getElementById("workout-id").value = workout.id;
@@ -115,19 +122,27 @@ async function loadWorkouts() {
         }
     });
 
+    if (res.status === 401) {
+        alert("Session expired. Please login again.");
+        logout();
+        return;
+    }
+
     const workouts = await res.json();
+    document.workoutData = workouts; // 🆕 store all workouts
     const list = document.getElementById("workout-list");
     list.innerHTML = "";
 
     workouts.forEach(w => {
         const li = document.createElement("li");
         li.innerHTML = `
-            <b>${w.exerciseType}</b> - ${w.durationMinutes} min, ${w.caloriesBurned} cal, HR: ${w.heartRate}
-            <button onclick='editWorkout(${JSON.stringify(w)})'>✏️</button>
-            <button onclick='deleteWorkout(${w.id})'>🗑</button>
-        `;
+        <b>${w.exerciseType}</b> - ${w.durationMinutes} min, ${w.caloriesBurned} cal, HR: ${w.heartRate}
+        <button onclick="deleteWorkout(${w.id})">🗑</button>
+        <button onclick="editWorkout(${w.id})">✏️</button>
+          `;
         list.appendChild(li);
     });
+
 }
 
 
@@ -144,8 +159,48 @@ async function deleteWorkout(id) {
     loadWorkouts();
 }
 
+async function loadWorkoutSummary() {
+    const res = await fetch(`${apiBaseUrl}/Workout/summary`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+
+    if (res.status === 401) {
+        alert("Session expired. Please login again.");
+        logout();
+        return;
+    }
+
+    const data = await res.json();
+    document.getElementById("summary").innerText = `Total Workouts Logged: ${data.total}`;
+}
+
+function resetForm() {
+    document.getElementById("type").value = "";
+    document.getElementById("duration").value = "";
+    document.getElementById("calories").value = "";
+    document.getElementById("rate").value = "";
+    editingWorkoutId = null;
+    document.querySelector("button").innerText = "Add Workout";
+}
+
+function editWorkout(id) {
+    const workout = document.workoutData.find(w => w.id === id);
+    if (!workout) return;
+
+    document.getElementById("type").value = workout.exerciseType;
+    document.getElementById("duration").value = workout.durationMinutes;
+    document.getElementById("calories").value = workout.caloriesBurned;
+    document.getElementById("rate").value = workout.heartRate;
+
+    editingWorkoutId = id;
+    document.querySelector("button").innerText = "Update Workout";
+}
+
+
 // ==== AUTOLOAD ON DASHBOARD ====
 if (window.location.pathname.includes("dashboard.html")) {
     if (!token) window.location.href = "index.html";
     loadWorkouts();
+    loadWorkoutSummary();
 }
+

@@ -25,17 +25,18 @@ namespace FitnessTrackerAPI.Controllers
         public async Task<IActionResult> GetMyWorkouts()
         {
             var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if (userIdClaim == null)
-                return Unauthorized();
+            if (userIdClaim == null) return Unauthorized();
 
             var userId = int.Parse(userIdClaim.Value);
 
             var workouts = await _context.Workouts
                 .Where(w => w.UserId == userId.ToString())
+                .OrderByDescending(w => w.Date)
                 .ToListAsync();
 
             return Ok(workouts);
         }
+
 
 
         // POST: api/Workout
@@ -103,5 +104,18 @@ namespace FitnessTrackerAPI.Controllers
 
             return NoContent();
         }
+
+        [HttpGet("summary")]
+        public async Task<IActionResult> GetWorkoutSummary()
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null) return Unauthorized();
+
+            var userId = userIdClaim.Value;
+            var count = await _context.Workouts.CountAsync(w => w.UserId == userId);
+
+            return Ok(new { total = count });
+        }
+
     }
 }
