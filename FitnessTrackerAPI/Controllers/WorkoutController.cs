@@ -22,73 +22,90 @@ namespace FitnessTrackerAPI.Controllers
 
         // GET: api/Workout/user/{userId}
         [HttpGet("user")]
+        [Authorize]
         public async Task<IActionResult> GetMyWorkouts()
         {
-            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
-            if (userIdClaim == null) return Unauthorized();
-
-            var userId = int.Parse(userIdClaim.Value);
-
-            var workouts = await _context.Workouts
-                .Where(w => w.UserId == userId.ToString())
-                .OrderByDescending(w => w.Date)
-                .ToListAsync();
-
-            return Ok(workouts);
-        }
-
-
-
-        // POST: api/Workout
-        [HttpPost]
-        public async Task<IActionResult> CreateWorkout([FromBody] Workout workout)
-        {
-            if (!ModelState.IsValid)
-            {
-                var errors = string.Join(" | ", ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage));
-
-                return BadRequest("Model is invalid: " + errors);
-            }
-
             var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
             if (userIdClaim == null)
                 return Unauthorized();
 
-            workout.UserId = userIdClaim.Value;
+            var userId = int.Parse(userIdClaim.Value);
 
-            if (workout.Date == null)
-                workout.Date = DateTime.Now;
+            var workouts = await _context.Workouts
+                .Where(w => w.UserId == userId)
+                .Include(w => w.ExerciseType) // <-- this ensures we load the name
+                .ToListAsync();
+
+            var results = workouts.Select(w => new
+            {
+                w.Id,
+                ExerciseType = w.ExerciseType != null ? $"{w.ExerciseType.Name} ({w.ExerciseType.ShortCode})" : null,
+                w.DurationMinutes,
+                w.CaloriesBurned,
+                w.HeartRate,
+                w.Date
+            });
+
+            return Ok(results);
+        }
+
+
+
+        [HttpPost]
+        [Authorize]
+        public async Task<IActionResult> CreateWorkout([FromBody] CreateWorkoutDto dto)
+        {
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized();
+
+            var userId = int.Parse(userIdClaim.Value);
+
+            var workout = new Workout
+            {
+                ExerciseTypeId = dto.ExerciseTypeId,
+                DurationMinutes = dto.DurationMinutes,
+                CaloriesBurned = dto.CaloriesBurned,
+                HeartRate = dto.HeartRate,
+                Date = dto.Date,
+                UserId = userId
+            };
 
             _context.Workouts.Add(workout);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetMyWorkouts), new { }, workout);
+            return Ok(workout);
         }
+
 
 
 
 
         // PUT: api/Workout/{id}
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateWorkout(int id, [FromBody] Workout updatedWorkout)
+        [Authorize]
+        public async Task<IActionResult> UpdateWorkout(int id, [FromBody] UpdateWorkoutDto dto)
         {
-            var workout = await _context.Workouts.FindAsync(id);
+            var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
+            if (userIdClaim == null)
+                return Unauthorized();
 
-            if (workout == null)
-                return NotFound();
+            var userId = int.Parse(userIdClaim.Value);
+            var workout = await _context.Workouts.FirstOrDefaultAsync(w => w.Id == id && w.UserId == userId);
 
-            workout.ExerciseType = updatedWorkout.ExerciseType;
-            workout.DurationMinutes = updatedWorkout.DurationMinutes;
-            workout.CaloriesBurned = updatedWorkout.CaloriesBurned;
-            workout.HeartRate = updatedWorkout.HeartRate;
-            workout.Date = updatedWorkout.Date;
+            if (workout == null) return NotFound();
+
+            workout.ExerciseTypeId = dto.ExerciseTypeId;
+            workout.DurationMinutes = dto.DurationMinutes;
+            workout.CaloriesBurned = dto.CaloriesBurned;
+            workout.HeartRate = dto.HeartRate;
+            workout.Date = dto.Date;
 
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(workout);
         }
+
 
         // DELETE: api/Workout/{id}
         [HttpDelete("{id}")]
@@ -111,7 +128,7 @@ namespace FitnessTrackerAPI.Controllers
             var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier);
             if (userIdClaim == null) return Unauthorized();
 
-            var userId = userIdClaim.Value;
+            var userId = int.Parse(userIdClaim.Value);
             var count = await _context.Workouts.CountAsync(w => w.UserId == userId);
 
             return Ok(new { total = count });

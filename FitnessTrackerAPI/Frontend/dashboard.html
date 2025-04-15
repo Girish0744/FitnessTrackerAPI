@@ -1,28 +1,54 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Workout Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <title>My Workouts</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
         <h2>My Workouts</h2>
 
-        <button id="logout-btn" onclick="logout()">Logout</button>
+        <!-- Logout -->
+        <button id="logout-btn">Logout</button>
 
-        <form onsubmit="event.preventDefault(); addWorkout();" class="form">
-            <input type="text" id="type" placeholder="Exercise Type" />
+        <select id="filterDropdown" style="margin: 10px 0;">
+            <option value="all" selected>All Exercise Types</option>
+        </select>
+
+
+
+        <!-- Workout Form -->
+        <form id="workout-form" style="margin-top: 15px;">
+            <select id="exerciseTypeDropdown">
+                <option disabled selected value="">Select Exercise Type</option>
+            </select>
             <input type="number" id="duration" placeholder="Minutes" />
             <input type="number" id="calories" placeholder="Calories Burned" />
             <input type="number" id="rate" placeholder="Heart Rate" />
-            <button type="submit" id="action-btn">Add Workout</button>
+            <button id="action-btn">Add Workout</button>
         </form>
 
-        <p id="summary"></p>
+        <!-- Summary -->
+        <p id="summary" style="margin-top: 15px;"></p>
 
-        <ul id="workout-list"></ul>
+        <!-- Workout List -->
+        <ul id="workout-list" style="list-style: none; padding-left: 0;"></ul>
+
+        <div id="computed-stats" style="margin-top: 15px; font-weight: 500;"></div>
+
+        <button id="toggle-chart-btn" style="margin-top: 10px;">Switch to Pie Chart</button>
+
+
+        <!-- Chart Container -->
+        <div id="chart-container" style="margin-top: 30px;">
+            <canvas id="workoutChart" width="400" height="200"></canvas>
+            <button id="download-chart" style="margin-top: 10px;">📥 Download Chart</button>
+        </div>
     </div>
 
-    <script src="app.js"></script>
+    <!-- JS -->
+    <script type="module" src="js/dashboard.js"></script>
 </body>
 </html>
