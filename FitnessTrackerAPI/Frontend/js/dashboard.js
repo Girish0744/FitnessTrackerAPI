@@ -5,7 +5,7 @@ let workoutChart;
 let currentChartType = 'bar'; // 'bar' or 'pie'
 let currentFilter = "all";
 let filteredData = []; // globally store filtered list
-
+let workoutData = [];  //
 
 
 // If token is missing, redirect to login immediately
@@ -104,8 +104,8 @@ async function loadWorkouts() {
     const data = await res.json();
     window.workoutData = data;
 
-    // Filter based on selected exercise type
-    filteredData = currentFilter === "all"
+    // Apply filter (e.g., by exercise type)
+    const filteredData = currentFilter === "all"
         ? data
         : data.filter(w => w.exerciseType === currentFilter);
 
@@ -115,22 +115,46 @@ async function loadWorkouts() {
     filteredData.forEach(w => {
         const li = document.createElement("li");
         li.style.marginBottom = "10px";
+
+        // ✅ Convert UTC to local time
+        const utcDate = new Date(w.date);
+
+        // Force conversion to EST (even during EDT)
+        const localDateStr = new Date(w.date).toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+
+
+        // Append manual override
+        const displayDate = `${localDateStr} EST`;
+
+
+
         li.innerHTML = `
             <b>${w.exerciseType}</b> - ${w.durationMinutes} min, ${w.caloriesBurned} cal, HR: ${w.heartRate}
+            <br><small style="color:#aaa;">🕒 ${localDateStr}</small>
             <button onclick="editWorkout(${w.id})" style="margin-left:10px;">✏️</button>
             <button onclick="deleteWorkout(${w.id})" style="margin-left:5px;">🗑️</button>
         `;
+
         list.appendChild(li);
     });
 
-    // Update Chart and Stats
+    // ✅ Update chart and averages
     renderChart(filteredData);
     showComputedStats(filteredData);
-    populateFilterDropdown(); // Update filter dropdown with current data
 
+    // ✅ Refresh filter dropdown and maintain current selection
+    populateFilterDropdown();
     document.getElementById("filterDropdown").value = currentFilter;
-
 }
+
 
 
 document.getElementById("download-chart").addEventListener("click", function () {
@@ -213,160 +237,97 @@ async function loadExerciseTypes() {
 
 function renderChart(data) {
     const ctx = document.getElementById("workoutChart").getContext("2d");
-
-    const labels = data.map(w => w.exerciseType);
-    const calories = data.map(w => w.caloriesBurned);
-    const duration = data.map(w => w.durationMinutes);
-    const heartRate = data.map(w => w.heartRate);
-
     if (workoutChart) workoutChart.destroy();
 
-    if (currentChartType === 'bar') {
-        workoutChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels,
-                datasets: [
+    const grouped = {};
+    data.forEach(w => {
+        if (!grouped[w.exerciseType]) grouped[w.exerciseType] = [];
+        grouped[w.exerciseType].push(w);
+    });
+
+    const labels = Object.keys(grouped);
+    const avgCalories = [], avgDuration = [], avgHeartRate = [];
+
+    labels.forEach(type => {
+        const list = grouped[type];
+        const total = list.length;
+        avgCalories.push(list.reduce((s, w) => s + w.caloriesBurned, 0) / total);
+        avgDuration.push(list.reduce((s, w) => s + w.durationMinutes, 0) / total);
+        avgHeartRate.push(list.reduce((s, w) => s + w.heartRate, 0) / total);
+    });
+
+    const chartConfig = {
+        type: currentChartType,
+        data: {
+            labels,
+            datasets: currentChartType === 'bar'
+                ? [
                     {
                         label: 'Calories Burned',
-                        data: calories,
+                        data: avgCalories,
                         backgroundColor: 'rgba(255, 99, 132, 0.6)'
                     },
                     {
                         label: 'Duration (min)',
-                        data: duration,
+                        data: avgDuration,
                         backgroundColor: 'rgba(54, 162, 235, 0.6)'
                     },
                     {
                         label: 'Heart Rate',
-                        data: heartRate,
+                        data: avgHeartRate,
                         backgroundColor: 'rgba(255, 206, 86, 0.6)'
                     }
                 ]
+                : [{
+                    label: 'Calories Burned',
+                    data: avgCalories,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)',
+                        'rgba(255, 159, 64, 0.6)'
+                    ]
+                }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: currentChartType === 'bar'
+                        ? `Workout Overview`
+                        : `Calories by Exercise Type`,
+                    color: '#ffffff',
+                    font: {
+                        size: 18,
+                        weight: 'bold'
+                    }
+                },
+                legend: {
+                    labels: {
+                        color: "#ffffff"
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: currentChartType === 'bar'
-                            ? `Workout Overview${currentFilter !== "all" ? " — " + currentFilter : ""}`
-                            : `Calories by Exercise Type${currentFilter !== "all" ? " — " + currentFilter : ""}`,
-                        color: "#ffffff",
-                        font: {
-                            size: 18,
-                            weight: 'bold'
-                        }
-                    },
-                    legend: {
-                        labels: {
-                            color: "#ffffff",
-                            font: {
-                                size: 12
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } else if (currentChartType === 'pie') {
-        if (currentFilter === "all") {
-            const caloriesByType = {};
-            data.forEach(w => {
-                caloriesByType[w.exerciseType] = (caloriesByType[w.exerciseType] || 0) + w.caloriesBurned;
-            });
-
-            workoutChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: Object.keys(caloriesByType),
-                    datasets: [{
-                        label: 'Calories Burned',
-                        data: Object.values(caloriesByType),
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.6)',
-                            'rgba(54, 162, 235, 0.6)',
-                            'rgba(255, 206, 86, 0.6)',
-                            'rgba(75, 192, 192, 0.6)',
-                            'rgba(153, 102, 255, 0.6)',
-                            'rgba(255, 159, 64, 0.6)'
-                        ]
-                    }]
+            scales: currentChartType === 'bar' ? {
+                x: {
+                    ticks: { color: "#ffffff" },
+                    grid: { color: "rgba(255,255,255,0.1)" }
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `Calories by Exercise Type`,
-                            color: "#ffffff",
-                            font: {
-                                size: 18,
-                                weight: 'bold'
-                            }
-                        },
-                        legend: {
-                            labels: {
-                                color: "#ffffff",
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    }
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: 120,
+                    ticks: { color: "#ffffff" },
+                    grid: { color: "rgba(255,255,255,0.1)" }
                 }
-            });
-
-        } else {
-            const total = data.length;
-
-            const totalCalories = data.reduce((sum, w) => sum + w.caloriesBurned, 0);
-            const totalDuration = data.reduce((sum, w) => sum + w.durationMinutes, 0);
-            const totalHeartRate = data.reduce((sum, w) => sum + w.heartRate, 0);
-
-            const avgCalories = (totalCalories / total).toFixed(1);
-            const avgDuration = (totalDuration / total).toFixed(1);
-            const avgHeartRate = (totalHeartRate / total).toFixed(1);
-
-            workoutChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['Calories Burned', 'Duration (min)', 'Heart Rate'],
-                    datasets: [{
-                        data: [avgCalories, avgDuration, avgHeartRate],
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.6)',
-                            'rgba(54, 162, 235, 0.6)',
-                            'rgba(255, 206, 86, 0.6)'
-                        ]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: `Average Distribution — ${data[0].exerciseType}`,
-                            color: "#ffffff",
-                            font: {
-                                size: 18,
-                                weight: 'bold'
-                            }
-                        },
-                        legend: {
-                            labels: {
-                                color: "#ffffff",
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            } : undefined
         }
+    };
 
-    }
+    workoutChart = new Chart(ctx, chartConfig);
 }
 
 
@@ -406,10 +367,17 @@ function populateFilterDropdown() {
 
 document.getElementById("toggle-chart-btn").addEventListener("click", () => {
     currentChartType = currentChartType === 'bar' ? 'pie' : 'bar';
-    document.getElementById("toggle-chart-btn").innerText =
-        currentChartType === 'bar' ? 'Switch to Pie Chart' : 'Switch to Bar Chart';
 
-    renderChart(filteredData); // ✅ Use filtered list
+    // Update button text
+    document.getElementById("toggle-chart-btn").textContent =
+        currentChartType === 'bar' ? "Switch to Pie Chart" : "Switch to Bar Chart";
+
+    // Filter again based on currentFilter
+    const filteredData = currentFilter === "all"
+        ? window.workoutData
+        : window.workoutData.filter(w => w.exerciseType === currentFilter);
+
+    renderChart(filteredData);
 });
 
 

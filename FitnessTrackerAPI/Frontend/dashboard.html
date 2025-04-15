@@ -17,8 +17,6 @@
             <option value="all" selected>All Exercise Types</option>
         </select>
 
-
-
         <!-- Workout Form -->
         <form id="workout-form" style="margin-top: 15px;">
             <select id="exerciseTypeDropdown">
@@ -40,12 +38,12 @@
 
         <button id="toggle-chart-btn" style="margin-top: 10px;">Switch to Pie Chart</button>
 
-
-        <!-- Chart Container -->
-        <div id="chart-container" style="margin-top: 30px;">
-            <canvas id="workoutChart" width="400" height="200"></canvas>
-            <button id="download-chart" style="margin-top: 10px;">📥 Download Chart</button>
+        <!-- Chart Container with fixed height and proper margin -->
+        <div style="height: 350px; margin-top: 10px;">
+            <canvas id="workoutChart"></canvas>
         </div>
+
+        <button id="download-chart" style="margin-top: 10px;">📥 Download Chart</button>
     </div>
 
     <!-- JS -->

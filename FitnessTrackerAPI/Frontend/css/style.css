@@ -60,7 +60,7 @@ ul {
     margin-top: 20px;
 }
 
-    ul li {
+ul li {
         background: rgba(255,255,255,0.9);
         color: #333;
         padding: 12px;
@@ -69,10 +69,11 @@ ul {
         display: flex;
         justify-content: space-between;
         align-items: center;
-    }
+}
 
-        ul li button {
+ul li button {
             margin-left: 10px;
             padding: 8px 10px;
             font-size: 14px;
-        }
+}
+
